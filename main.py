@@ -1,5 +1,4 @@
 import os
-import random
 import winsound
 
 import cv2
@@ -15,14 +14,27 @@ class SecurityCamera:
         self.encoded_faces = []
         self.path = 'images'
         print('please wait my dummy program is busy encoding...')
-        self.camera = cv2.VideoCapture(0)
+        self.camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         self.known_encoded_faces = []
         self.frame_one = None
+        self.video_capture = None
+
+    def save_video_stream(self):
+        os.makedirs('Security Camera Video', exist_ok=True)
+        name = 'Video1.avi'
+        if name in os.listdir('Security Camera Video'):
+            name = f'{os.path.splitext(name)[0][:-1]}' \
+                   f'{len(os.listdir("Security Camera Video")) + 1}' \
+                   f'{os.path.splitext(name)[1]} '
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.video_capture = cv2.VideoWriter(os.path.join('Security Camera Video', name),
+                                             fourcc, 20.0, (640, 480))
+        print(f'{name} saving ...')
 
     def known_image_folder(self):
         for image in os.listdir(path=self.path):
             if not (image.endswith('.jpeg') or image.endswith('.JPG') or image.endswith('.jpg') or image.endswith(
-                    '.png')):
+                    '.png') or image.endswith('.PNG')):
                 continue
             img = cv2.imread(f"{self.path}/{image}")
             self.images += [img]
@@ -39,19 +51,29 @@ class SecurityCamera:
         self.known_image_folder()
         self.known_encoded_faces = self.encode_face(self.images)
         print("Encoding Complete, camera opening...")
+        self.save_video_stream()
         self.open_camera_tasks()
 
     def open_camera_tasks(self):
         while self.camera.isOpened():
             _, self.frame_one = self.camera.read()
             self.detect_faces()
-            cv2.imshow("Press 'c' to capture an image.", self.frame_one)
+            self.video_capture.write(self.frame_one)
+            cv2.imshow("Press 'c or space bar' to capture an image.", self.frame_one)
             key = cv2.cv2.waitKey(1)
-            if key == ord('q'):
-                self.camera.release()
-                cv2.destroyAllWindows()
-            elif key == ord('c'):
-                cv2.imwrite(f'Image {random.randint(1, 100)}.png', self.frame_one)
+            if key == ord('q') or key == 27:
+                self.exit_protocol()
+            elif key == ord('c') or key == 32:
+                self.save_image_capture()
+
+    def save_image_capture(self):
+        os.makedirs('Security Camera Images', exist_ok=True)
+        name = 'Image1.png'
+        if name in os.listdir('Security Camera Images'):
+            name = f"{os.path.splitext(name)[0][:-1]}{len(os.listdir('Security Camera Images')) + 1}" \
+                   f"{os.path.splitext(name)[1]}"
+        cv2.imwrite(os.path.join('Security Camera Images', name), self.frame_one)
+        print(f"{name} captured successfully.")
 
     def detect_faces(self):
         frame_one_rgb = cv2.cvtColor(self.frame_one, cv2.COLOR_BGR2RGB)
@@ -69,14 +91,20 @@ class SecurityCamera:
             x, y, w, h = face_located
             cv2.rectangle(self.frame_one, (h, x), (y, w), (0, 255, 0), 2)
             cv2.rectangle(self.frame_one, (h, x - 40), (y, w), (0, 255, 0), 2)
-            cv2.putText(self.frame_one, name, (h + 10, x - 15), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(self.frame_one, name, (h + 30, x - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 255), 2)
         else:
             x, y, w, h = face_located
             cv2.rectangle(self.frame_one, (h, x), (y, w), (0, 255, 0), 2)
             cv2.rectangle(self.frame_one, (h, x - 40), (y, w), (0, 255, 0), 2)
-            cv2.putText(self.frame_one, "Unknown", (h + 10, x - 15), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(self.frame_one, "Unknown", (h, x - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 255),
+                        2)
             winsound.PlaySound('alert.wav', winsound.SND_ASYNC)
             print("Intruder in the house.")
+
+    def exit_protocol(self):
+        self.camera.release()
+        self.video_capture.release()
+        cv2.destroyAllWindows()
 
 
 SecurityCamera().run()
