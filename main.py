@@ -25,7 +25,7 @@ class SecurityCamera:
         if name in os.listdir('Security Camera Video'):
             name = f'{os.path.splitext(name)[0][:-1]}' \
                    f'{len(os.listdir("Security Camera Video")) + 1}' \
-                   f'{os.path.splitext(name)[1]} '
+                   f'{os.path.splitext(name)[1]}'
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.video_capture = cv2.VideoWriter(os.path.join('Security Camera Video', name),
                                              fourcc, 20.0, (640, 480))
